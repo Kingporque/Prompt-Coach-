@@ -77,25 +77,43 @@ loading the final unpacked extension.
 ## Project structure
 
 ```
-manifest.json              MV3 manifest
-vite.config.js             Vite + React + @crxjs config
-src/
-  background/
-    service-worker.js      Message router; the only network/API-key surface
-  lib/
-    constants.js           Message types, defaults, storage keys
-    storage.js             Promise wrappers over chrome.storage.local
-    metaPrompt.js          The prompt-engineer system prompt + JSON schema  ← core IP
-    gemini.js              Gemini generateContent client + friendly errors
-    messaging.js           UI ↔ worker message helper
-  content/
-    inline.js              Injects the Optimize button; reads/rewrites the composer
-    sites.js               Per-site composer selectors  ← edit here if a site changes
-    inline.css             Styles for the injected button + toast
-  popup/                   React popup (paste → optimize → copy)
-  options/                 API key + model settings
-icons/                     Generated extension icons
+.
+├── manifest.json              MV3 manifest (permissions, commands, content scripts)
+├── vite.config.js             Vite + React + @crxjs build config
+├── package.json               Scripts + dependencies
+├── package-lock.json
+├── .gitignore
+├── README.md
+├── icons/                     Extension icons
+│   ├── icon16.png
+│   ├── icon48.png
+│   └── icon128.png
+└── src/
+    ├── background/
+    │   └── service-worker.js    Message router + right-click menu; only network/key surface
+    ├── lib/
+    │   ├── constants.js         Message types, defaults, storage keys
+    │   ├── storage.js           Promise wrappers over chrome.storage.local
+    │   ├── metaPrompt.js        Prompt-engineer system prompt + JSON schema  ← core IP
+    │   ├── gemini.js            Gemini generateContent client + friendly errors
+    │   └── messaging.js         UI ↔ worker message helper
+    ├── content/
+    │   ├── inline.js            Injects the Optimize button; reads/rewrites the composer
+    │   ├── sites.js             Per-site composer selectors  ← edit here if a site changes
+    │   └── inline.css           Styles for the injected button + toast
+    ├── popup/                   React popup (paste → optimize → copy)
+    │   ├── Popup.jsx
+    │   ├── main.jsx
+    │   ├── index.html
+    │   └── popup.css
+    └── options/                 API key + model settings
+        ├── Options.jsx
+        ├── main.jsx
+        ├── index.html
+        └── options.css
 ```
+
+> `dist/` (build output) and `node_modules/` are generated and git-ignored.
 
 ---
 
