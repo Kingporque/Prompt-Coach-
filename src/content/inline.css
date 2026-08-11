@@ -1,0 +1,99 @@
+/* Inline mode UI. Everything is namespaced under .po-inline-* and uses its own
+   values (not inheriting host-page fonts/colors) so it renders consistently on
+   ChatGPT, Claude and Gemini without clashing with their styles. High z-index
+   keeps it above the composers, which often sit in fixed toolbars. */
+
+.po-inline-btn {
+  position: fixed;
+  bottom: 88px;
+  right: 24px;
+  z-index: 2147483646;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  padding: 8px 14px;
+  border: none;
+  border-radius: 9999px;
+
+  font: 600 13px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #fff;
+  background: linear-gradient(135deg, #6d5efc, #8b5cf6);
+  box-shadow: 0 4px 14px rgba(109, 94, 252, 0.4);
+
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, opacity 0.12s ease;
+}
+
+.po-inline-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(109, 94, 252, 0.5);
+}
+
+.po-inline-btn:active {
+  transform: translateY(0);
+}
+
+.po-inline-btn:disabled,
+.po-inline-btn.po-inline-busy {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.po-inline-btn.po-inline-busy {
+  padding-left: 30px;
+}
+
+.po-inline-btn.po-inline-busy::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: po-inline-spin 0.7s linear infinite;
+}
+
+@keyframes po-inline-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.po-inline-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 2147483647;
+
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 10px;
+
+  font: 500 13px/1.4 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #fff;
+  background: #1f2937;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.po-inline-toast.po-inline-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.po-inline-toast[data-kind='ok'] {
+  background: #065f46;
+}
+
+.po-inline-toast[data-kind='error'] {
+  background: #991b1b;
+}
