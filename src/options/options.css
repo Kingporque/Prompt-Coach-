@@ -173,3 +173,29 @@ select.input {
   text-align: center;
   line-height: 1.5;
 }
+
+.field-row {
+  margin: 12px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.checkbox-label input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

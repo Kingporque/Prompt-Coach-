@@ -1,12 +1,12 @@
 import { MSG } from '../lib/constants.js'
-import { getSettings } from '../lib/storage.js'
+import { getSettings, getConversation, setConversation } from '../lib/storage.js'
 import { optimizePrompt, testApiKey, listModels } from '../lib/gemini.js'
 
 // The service worker is the only place that touches the network / API key.
 // UI surfaces (popup, options, and later a content script) message it and get
 // a { ok, data } / { ok: false, error } envelope back.
 
-async function handle(message) {
+async function handle(message, _sender) {
   const settings = await getSettings()
 
   switch (message?.type) {
@@ -19,6 +19,39 @@ async function handle(message) {
       })
       return data
     }
+    case MSG.OPTIMIZE_WITH_CONTEXT: {
+      const data = await optimizePrompt({
+        apiKey: settings.apiKey,
+        model: message.model || settings.model,
+        style: message.style || settings.style,
+        rawPrompt: message.rawPrompt,
+        context: {
+          screenshotDataUrl: message.screenshotDataUrl,
+          conversationHistory: message.conversationHistory,
+        },
+      })
+      return data
+    }
+    case MSG.CAPTURE_SCREENSHOT: {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (!tab?.windowId) throw new Error('No active tab to capture.')
+      const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, {
+        format: 'jpeg',
+        quality: 0.85,
+      })
+      return { dataUrl }
+    }
+    case MSG.GET_CONVERSATION: {
+      const tabId = message.tabId
+      if (!tabId) throw new Error('No tab ID provided.')
+      return getConversation(tabId)
+    }
+    case MSG.UPDATE_CONVERSATION: {
+      const tabId = message.tabId
+      if (!tabId) throw new Error('No tab ID provided.')
+      await setConversation(tabId, message.history)
+      return { ok: true }
+    }
     case MSG.TEST_KEY: {
       await testApiKey({
         apiKey: message.apiKey ?? settings.apiKey,
@@ -30,13 +63,16 @@ async function handle(message) {
       const models = await listModels({ apiKey: message.apiKey ?? settings.apiKey })
       return { models }
     }
+    case MSG.GET_TAB_ID: {
+      return { tabId: _sender?.tab?.id }
+    }
     default:
       throw new Error(`Unknown message type: ${message?.type}`)
   }
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  handle(message)
+  handle(message, _sender)
     .then((data) => sendResponse({ ok: true, data }))
     .catch((err) => sendResponse({ ok: false, error: err?.message || String(err) }))
   // Return true to keep the message channel open for the async response.
@@ -50,6 +86,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // activeTab, granted transiently when the user clicks the menu item.
 
 const CONTEXT_MENU_ID = 'po-optimize-selection'
+const CONTEXT_MENU_ID_WITH_SCREENSHOT = 'po-optimize-selection-screenshot'
 
 // Menu items live in non-persistent storage, so (re)create on install and on
 // every service-worker startup to be safe. removeAll first avoids duplicates.
@@ -58,6 +95,11 @@ function createMenu() {
     chrome.contextMenus.create({
       id: CONTEXT_MENU_ID,
       title: 'Optimize prompt with Prompt Optimizer',
+      contexts: ['selection'],
+    })
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ID_WITH_SCREENSHOT,
+      title: 'Optimize prompt + screenshot with Prompt Optimizer',
       contexts: ['selection'],
     })
   })
@@ -167,21 +209,35 @@ function toastInPage(message) {
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== CONTEXT_MENU_ID || !tab?.id) return
+  if (!tab?.id || ![CONTEXT_MENU_ID, CONTEXT_MENU_ID_WITH_SCREENSHOT].includes(info.menuItemId)) return
   const raw = (info.selectionText || '').trim()
+  const withScreenshot = info.menuItemId === CONTEXT_MENU_ID_WITH_SCREENSHOT
 
   const run = (func, arg) =>
     chrome.scripting.executeScript({ target: { tabId: tab.id }, func, args: [arg] })
 
   try {
     const settings = await getSettings()
-    const { optimizedPrompt } = await optimizePrompt({
+    let context = {}
+
+    if (withScreenshot) {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+      if (activeTab?.windowId) {
+        context.screenshotDataUrl = await chrome.tabs.captureVisibleTab(activeTab.windowId, {
+          format: 'jpeg',
+          quality: 0.85,
+        })
+      }
+    }
+
+    const result = await optimizePrompt({
       apiKey: settings.apiKey,
       model: settings.model,
       style: settings.style,
       rawPrompt: raw,
+      context,
     })
-    await run(applyInPage, optimizedPrompt)
+    await run(applyInPage, result.optimizedPrompt)
   } catch (err) {
     await run(toastInPage, err?.message || 'Optimization failed.')
   }

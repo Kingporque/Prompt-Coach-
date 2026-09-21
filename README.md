@@ -30,27 +30,28 @@ On-page chat box ──▶ Inline button ─┘        │
 
 ## Setup
 
-### 1. Install dependencies and build
+### Quick start (from a fresh clone)
 
 ```bash
+git clone <repo>
+cd Prompt-Coach-
 npm install
-npm run build
+npm run setup   # creates .env template and prints next steps
+npm run build   # builds to /dist
 ```
-
-This produces a loadable extension in `dist/`.
 
 > If `npm install` reports that esbuild's install script was blocked, run
 > `npm install-scripts approve esbuild` then `npm install` again (already handled
 > in this repo via `allowScripts` in `package.json`).
 
-### 2. Load it into Chrome
+### Load it into Chrome
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top-right)
 3. Click **Load unpacked**
 4. Select the **`dist/`** folder
 
-### 3. Add your Gemini API key
+### Add your Gemini API key
 
 1. Get a free key at <https://aistudio.google.com/app/apikey>
 2. Right-click the extension icon → **Options** (or click the ⚙︎ in the popup)
@@ -67,6 +68,31 @@ You're ready — click the extension icon, paste a rough prompt, and hit **Optim
 npm run dev     # Vite dev server with HMR for the popup/options
 npm run build   # Production build into dist/
 ```
+
+## Releases
+
+To create a new release (version bump + tagged commit + ZIP archive):
+
+```bash
+npm run release       # patch bump (0.1.0 → 0.1.1)
+npm run release minor # minor bump (0.1.0 → 0.2.0)
+npm run release major # major bump (0.1.0 → 1.0.0)
+```
+
+This script:
+1. Builds the extension
+2. Bumps the version in `package.json`
+3. Commits + tags + pushes to Git
+4. Creates a `prompt-optimizer-v*.zip` of the `dist/` folder
+5. Prints a link to the GitHub "New Release" page for uploading the ZIP
+
+## Distribution
+
+| Method | Reach | Notes |
+|--------|-------|-------|
+| **Chrome Web Store** | Millions | Best for broad distribution. Requires a one-time $5 developer registration. |
+| **GitHub Releases** | Dev users | Upload the ZIP from `npm run release`. Users download → extract → "Load unpacked" in `chrome://extensions`. |
+| **Direct download link** | Anyone with the link | Host the ZIP on your site or a CDN. Same load-unpacked flow. |
 
 For live-reloading inside Chrome, `npm run dev` works with `@crxjs/vite-plugin`;
 Chrome loads `dist/` while HMR updates the UI. Re-run `npm run build` before
@@ -130,6 +156,9 @@ loading the final unpacked extension.
       remap at `chrome://extensions/shortcuts`
 - [ ] Prompt history / recent optimizations
 - [ ] Guided first-run onboarding for the API key
+- [x] **Proactive intervention** (Phase 3) — pattern detection + auto-suggest banner
+      (idle after response, message edits, repetition, model errors/refusals)
+- [x] **Setup & release automation** — `npm run setup` + `npm run release` scripts
 
 ---
 
@@ -140,6 +169,3 @@ The extension requests `storage` (to save your key + settings), `contextMenus`
 write the result back only on the tab where you click the menu — no standing access
 to any site). Network access is limited to `https://generativelanguage.googleapis.com/`.
 Your API key and prompts are sent directly to Google and to nowhere else.
-
-# Prompt-Coach-
-This Product is a prompt optimizer it lives in the on the webpage 

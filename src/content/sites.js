@@ -9,21 +9,33 @@
 //   mountSelector  — optional element to anchor the Optimize button inside. When
 //                    absent (or not found at click time), inline.js falls back to
 //                    a fixed-position button near the editor.
+//   userMessageSelector — selector for user turn bubbles in the conversation.
+//   assistantMessageSelector — selector for assistant turn bubbles.
+//   messageContentSelector — inner element holding message text.
 
 export const SITES = {
   'chatgpt.com': {
     name: 'ChatGPT',
     // ProseMirror contenteditable div.
     editorSelector: '#prompt-textarea',
+    userMessageSelector: '[data-message-author="user"]',
+    assistantMessageSelector: '[data-message-author="assistant"]',
+    messageContentSelector: '.markdown',
   },
   'claude.ai': {
     name: 'Claude',
     editorSelector: 'div.ProseMirror[contenteditable="true"]',
+    userMessageSelector: '[data-testid="user-message"]',
+    assistantMessageSelector: '[data-testid="assistant-message"]',
+    messageContentSelector: '.prose',
   },
   'gemini.google.com': {
     name: 'Gemini',
     // Quill editor.
     editorSelector: '.ql-editor[contenteditable="true"]',
+    userMessageSelector: '[data-message-type="user"]',
+    assistantMessageSelector: '[data-message-type="model"]',
+    messageContentSelector: '.message-text',
   },
 }
 

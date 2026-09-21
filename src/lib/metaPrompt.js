@@ -44,6 +44,30 @@ ${rawPrompt}
 --- RAW PROMPT END ---`
 }
 
+// Builds the user-turn content when visual or conversation context is available.
+// context can include: { screenshotDataUrl (base64 data URL), conversationHistory ([string]) }
+export function buildUserContentWithContext(rawPrompt, style, context = {}) {
+  const guidance = STYLE_GUIDANCE[style] || STYLE_GUIDANCE.balanced
+  const { screenshotDataUrl, conversationHistory } = context
+
+  let contextBlocks = ''
+  if (conversationHistory && conversationHistory.length > 0) {
+    contextBlocks += `CONVERSATION HISTORY:\n${conversationHistory.join('\n')}\n\n`
+  }
+  if (screenshotDataUrl) {
+    // Gemini multimodal: embed as a data URI in the parts array (handled in gemini.js)
+    contextBlocks += 'SCREENSHOT: (see image input)\n\n'
+  }
+
+  return `Optimization style: ${style}. ${guidance}
+
+You have additional context to help you understand the user's actual intent. Analyze it carefully — the user's raw prompt may be underspecified, vague, or written quickly. Your job is to infer what they really want and write a prompt that would let a capable LLM handle this specific situation.
+
+${contextBlocks}--- RAW PROMPT START ---
+${rawPrompt}
+--- RAW PROMPT END ---`
+}
+
 // JSON schema Gemini must conform to (structured output).
 export const RESPONSE_SCHEMA = {
   type: 'object',

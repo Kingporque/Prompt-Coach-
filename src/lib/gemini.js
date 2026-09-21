@@ -1,6 +1,7 @@
 import {
   SYSTEM_INSTRUCTION,
   buildUserContent,
+  buildUserContentWithContext,
   RESPONSE_SCHEMA,
 } from './metaPrompt.js'
 
@@ -23,11 +24,27 @@ function friendlyError(status, body) {
 }
 
 // Calls Gemini generateContent and returns the parsed optimizer result.
-export async function optimizePrompt({ apiKey, model, style, rawPrompt }) {
+// context: { screenshotDataUrl, conversationHistory } — optional visual/conversation context
+export async function optimizePrompt({ apiKey, model, style, rawPrompt, context = {} }) {
   if (!apiKey) throw new Error('No API key set. Open the extension options to add your Gemini API key.')
   if (!rawPrompt || !rawPrompt.trim()) throw new Error('Please enter a prompt to optimize.')
 
   const url = `${API_BASE}/models/${encodeURIComponent(model)}:generateContent`
+
+  const { screenshotDataUrl, conversationHistory } = context
+  const useVision = Boolean(screenshotDataUrl)
+
+  const userText = useVision || conversationHistory?.length
+    ? buildUserContentWithContext(rawPrompt, style, context)
+    : buildUserContent(rawPrompt, style)
+
+  const userParts = [{ text: userText }]
+  if (useVision) {
+    // chrome.tabs.captureVisibleTab returns a data URL like "data:image/jpeg;base64,/9j/..."
+    // Gemini's imageBytes field expects the base64 string without the prefix.
+    const base64 = screenshotDataUrl.split(',')[1] || screenshotDataUrl
+    userParts.push({ image: { imageBytes: base64 } })
+  }
 
   const res = await fetch(url, {
     method: 'POST',
@@ -37,7 +54,7 @@ export async function optimizePrompt({ apiKey, model, style, rawPrompt }) {
     },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-      contents: [{ role: 'user', parts: [{ text: buildUserContent(rawPrompt, style) }] }],
+      contents: [{ role: 'user', parts: userParts }],
       generationConfig: {
         temperature: 0.4,
         responseMimeType: 'application/json',

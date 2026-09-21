@@ -17,6 +17,8 @@ export default function Popup() {
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [screenshot, setScreenshot] = useState(null)
+  const [useContext, setUseContext] = useState(false)
 
   // Load persisted settings + last-used style on mount.
   useEffect(() => {
@@ -31,6 +33,20 @@ export default function Popup() {
     setSettings({ style: next })
   }
 
+  async function onCapture() {
+    setError('')
+    try {
+      const data = await sendToWorker({ type: MSG.CAPTURE_SCREENSHOT })
+      setScreenshot(data.dataUrl)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  function onClearScreenshot() {
+    setScreenshot(null)
+  }
+
   async function onOptimize() {
     setError('')
     setResult(null)
@@ -41,7 +57,14 @@ export default function Popup() {
     }
     setLoading(true)
     try {
-      const data = await sendToWorker({ type: MSG.OPTIMIZE, rawPrompt: raw, style })
+      const message = { type: MSG.OPTIMIZE, rawPrompt: raw, style }
+
+      if (screenshot || useContext) {
+        message.type = MSG.OPTIMIZE_WITH_CONTEXT
+        if (screenshot) message.screenshotDataUrl = screenshot
+      }
+
+      const data = await sendToWorker(message)
       setResult(data)
     } catch (err) {
       setError(err.message)
@@ -61,6 +84,8 @@ export default function Popup() {
     // Ctrl/Cmd + Enter to optimize.
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') onOptimize()
   }
+
+  const contextActive = Boolean(screenshot || useContext)
 
   return (
     <div className="app">
@@ -97,7 +122,7 @@ export default function Popup() {
         rows={5}
       />
 
-      <div className="controls">
+      <div className="controls" style={{ marginTop: 12 }}>
         <div className="segmented">
           {STYLES.map((s) => (
             <button
@@ -110,10 +135,40 @@ export default function Popup() {
             </button>
           ))}
         </div>
-        <button className="primary" onClick={onOptimize} disabled={loading}>
-          {loading ? 'Optimizing…' : 'Optimize'}
+        <button
+          className="ghost"
+          onClick={screenshot ? onClearScreenshot : onCapture}
+          type="button"
+          title={screenshot ? 'Remove screenshot' : 'Capture screen to add visual context'}
+          style={{ padding: '6px 10px' }}
+        >
+          {screenshot ? '✕' : '📷'}
         </button>
       </div>
+
+      {screenshot && (
+        <div className="screenshot-preview">
+          <img src={screenshot} alt="Captured screen" />
+          <button className="link inline" onClick={onClearScreenshot}>
+            Remove screenshot
+          </button>
+        </div>
+      )}
+
+      <div className="toggle-row">
+        <label className="toggle-label">
+          <input
+            type="checkbox"
+            checked={useContext}
+            onChange={(e) => setUseContext(e.target.checked)}
+          />
+          Include conversation context (on supported chat sites)
+        </label>
+      </div>
+
+      <button className="primary" onClick={onOptimize} disabled={loading} style={{ width: '100%', marginTop: 10 }}>
+        {loading ? 'Optimizing…' : contextActive ? 'Optimize with context' : 'Optimize'}
+      </button>
 
       {error && <div className="error">{error}</div>}
 

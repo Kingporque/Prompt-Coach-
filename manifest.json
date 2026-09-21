@@ -33,7 +33,7 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["storage", "contextMenus", "activeTab", "scripting"],
+  "permissions": ["storage", "contextMenus", "activeTab", "scripting", "tabCapture"],
   "host_permissions": ["https://generativelanguage.googleapis.com/"],
   "icons": {
     "16": "icons/icon16.png",
