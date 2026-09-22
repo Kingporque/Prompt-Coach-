@@ -319,10 +319,12 @@ const REFUSAL_PATTERNS = [
   /unable to/i,
 ]
 
-function checkForErrorsOrRefusals() {
+// Combine error scan + new-message detection into one pass
+function observeConversation() {
   if (!site.assistantMessageSelector) return
   const msgs = document.querySelectorAll(site.assistantMessageSelector)
   msgs.forEach((el) => {
+    // First: check for refusal/error
     if (el.dataset.poChecked) return
     const content = el.textContent || ''
     if (REFUSAL_PATTERNS.some((p) => p.test(content))) {
@@ -331,51 +333,44 @@ function checkForErrorsOrRefusals() {
         if (bannerEl) return
         showBanner(bannerCallback)
       }, 2000)
+      return
     }
-  })
-}
-
-// Watch for new assistant messages to trigger idle detection
-function observeConversation() {
-  if (!site.assistantMessageSelector) return
-  checkForErrorsOrRefusals()
-
-  const msgs = document.querySelectorAll(site.assistantMessageSelector)
-  msgs.forEach((el) => {
+    // Then: detect new assistant message for idle timer
     if (el.dataset.poWatched) return
     el.dataset.poWatched = 'true'
     onAssistantResponse()
   })
 }
 
-// Monitor user input in the composer for edits
-function observeUserEdits() {
-  let lastVal = ''
-  const editor = document.querySelector(site.editorSelector)
-  if (!editor) return
-  function getText() {
-    return readText(editor)
-  }
-  lastVal = getText()
-  setInterval(() => {
-    const cur = getText()
-    if (cur !== lastVal && cur) {
+// Single throttled poller: handles both user edits and conversation watch
+let lastCheck = 0
+function tick() {
+  observeConversation()
+
+  // User edit detection
+  if (lastEditor) {
+    const cur = readText(lastEditor)
+    if (cur !== lastSentText && cur) {
       checkRepetition(cur)
-      lastVal = cur
+      lastSentText = cur
     }
-  }, 500)
+  }
+
+  if (settingsCache?.enabled) {
+    requestAnimationFrame(tick)
+  }
 }
 
-function startIntervention() {
-  observeConversation()
-  observeUserEdits()
+let lastEditor = null
+let lastSentText = ''
 
-  // Periodic check: idle timer + error scanning
-  setInterval(() => {
-    if (!settingsCache || !settingsCache.enabled) return
-    if (bannerEl) return
-    observeConversation()
-  }, 5000)
+function startIntervention() {
+  lastEditor = document.querySelector(site.editorSelector)
+  if (lastEditor) lastSentText = readText(lastEditor)
+
+  if (settingsCache?.enabled) {
+    tick()
+  }
 }
 
 function start() {
