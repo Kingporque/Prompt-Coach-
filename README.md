@@ -62,12 +62,24 @@ You're ready — click the extension icon, paste a rough prompt, and hit **Optim
 
 ---
 
-## Development
+## Performance
 
-```bash
-npm run dev     # Vite dev server with HMR for the popup/options
-npm run build   # Production build into dist/
-```
+The intervention content script uses minimal CPU via these techniques:
+
+- **Single `requestAnimationFrame` loop** — one `tick()` function replaces three
+  separate `setInterval` calls (500ms, 5s, plus message-edit polling). The loop
+  only runs when intervention is enabled and stops automatically otherwise.
+- **Combined DOM pass** — `observeConversation()` scans assistant messages once
+  per tick for both refusal/error patterns and new-message detection, instead of
+  two separate `querySelectorAll` calls.
+- **Editor reference caching** — the composer element is queried once at startup
+  and reused, avoiding repeated DOM lookups on every poll.
+- **MutationObserver trigger** — DOM mutations (new assistant replies, chat
+  updates) trigger `observeConversation()` immediately, so the idle timer starts
+  without waiting for the next rAF cycle.
+
+This keeps pattern detection reactive (detects changes within ~16ms) while
+consuming negligible CPU when the page is idle.
 
 ## Releases
 
@@ -158,6 +170,8 @@ loading the final unpacked extension.
 - [ ] Guided first-run onboarding for the API key
 - [x] **Proactive intervention** (Phase 3) — pattern detection + auto-suggest banner
       (idle after response, message edits, repetition, model errors/refusals)
+- [x] **Performance optimization** — single rAF-driven poll + combined DOM pass keeps
+      pattern detection lightweight and reactive (no fixed-interval CPU burn)
 - [x] **Setup & release automation** — `npm run setup` + `npm run release` scripts
 
 ---
