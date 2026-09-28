@@ -315,7 +315,8 @@ const REFUSAL_PATTERNS = [
   /i don't have access/i,
   /i'm not sure/i,
   /unfortunately/i,
-  /error/i,
+  /i encountered an error/i,
+  /an? error (occurred|was|has)/i,
   /unable to/i,
 ]
 
