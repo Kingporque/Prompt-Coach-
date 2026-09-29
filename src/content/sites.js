@@ -16,23 +16,36 @@
 export const SITES = {
   'chatgpt.com': {
     name: 'ChatGPT',
-    // ProseMirror contenteditable div.
-    editorSelector: '#prompt-textarea',
+    // Try several known editor patterns so the inline button survives markup tweaks.
+    editorSelector: [
+      '#prompt-textarea',
+      'textarea[data-id="root"]',
+      '[contenteditable="true"][role="textbox"]',
+      'div[contenteditable="true"][role="textbox"]',
+    ],
     userMessageSelector: '[data-message-author="user"]',
     assistantMessageSelector: '[data-message-author="assistant"]',
     messageContentSelector: '.markdown',
   },
   'claude.ai': {
     name: 'Claude',
-    editorSelector: 'div.ProseMirror[contenteditable="true"]',
+    editorSelector: [
+      'div.ProseMirror[contenteditable="true"]',
+      'div[contenteditable="true"][role="textbox"]',
+      '[contenteditable="true"][role="textbox"]',
+    ],
     userMessageSelector: '[data-testid="user-message"]',
     assistantMessageSelector: '[data-testid="assistant-message"]',
     messageContentSelector: '.prose',
   },
   'gemini.google.com': {
     name: 'Gemini',
-    // Quill editor.
-    editorSelector: '.ql-editor[contenteditable="true"]',
+    editorSelector: [
+      '.ql-editor[contenteditable="true"]',
+      'div[contenteditable="true"][role="textbox"]',
+      '[contenteditable="true"][aria-label*="Message"]',
+      '[contenteditable="true"][data-testid*="composer"]',
+    ],
     userMessageSelector: '[data-message-type="user"]',
     assistantMessageSelector: '[data-message-type="model"]',
     messageContentSelector: '.message-text',

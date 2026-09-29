@@ -12,6 +12,16 @@ import { resolveSite } from './sites.js'
 
 const site = resolveSite()
 
+function findEditor() {
+  if (!site?.editorSelector) return null
+  const selectors = Array.isArray(site.editorSelector) ? site.editorSelector : [site.editorSelector]
+  for (const selector of selectors) {
+    const el = document.querySelector(selector)
+    if (el) return el
+  }
+  return null
+}
+
 // --- Text read / replace ---------------------------------------------------
 
 function readText(editor) {
@@ -190,7 +200,7 @@ function makeButton(editor) {
 // whose composer mounts and re-mounts, so we re-point (or recreate) the button
 // whenever the editor element changes, and never leave a stale one behind.
 function inject() {
-  const editor = document.querySelector(site.editorSelector)
+  const editor = findEditor()
   if (!editor) return
   const existing = document.querySelector('.po-inline-btn')
   if (existing && existing.__poEditor === editor) return
@@ -226,7 +236,7 @@ function showBanner(onOptimize) {
     <button class="po-intervention-optimize">✨ Optimize</button>
     <button class="po-intervention-dismiss">Dismiss</button>
   `
-  const editor = document.querySelector(site.editorSelector)
+  const editor = findEditor()
   if (editor && editor.parentElement) {
     editor.parentElement.appendChild(banner)
   } else {
@@ -247,7 +257,7 @@ function showBanner(onOptimize) {
 
 function bannerCallback() {
   const btn = document.querySelector('.po-inline-btn')
-  const editor = document.querySelector(site.editorSelector)
+  const editor = findEditor()
   if (btn && editor) onOptimize(editor, btn)
 }
 
@@ -260,7 +270,7 @@ function onAssistantResponse() {
   idleTimer = setTimeout(() => {
     if (!settingsCache || !settingsCache.enabled) return
     if (bannerEl) return
-    const editor = document.querySelector(site.editorSelector)
+    const editor = findEditor()
     if (!editor) return
     const currentText = readText(editor)
     if (currentText) return
@@ -366,7 +376,7 @@ let lastEditor = null
 let lastSentText = ''
 
 function startIntervention() {
-  lastEditor = document.querySelector(site.editorSelector)
+  lastEditor = findEditor()
   if (lastEditor) lastSentText = readText(lastEditor)
 
   if (settingsCache?.enabled) {

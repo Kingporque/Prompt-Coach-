@@ -6,6 +6,26 @@ import {
 } from './metaPrompt.js'
 
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta'
+const RETRYABLE_STATUSES = new Set([500, 502, 503, 504, 429])
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+// Retry wrapper for transient failures (5xx server errors, 429 rate limits).
+// Uses exponential backoff. Returns the last response.
+async function fetchWithRetry(url, opts, retries = 3) {
+  let lastRes
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) {
+      const delay = 500 * Math.pow(2, attempt - 1)
+      await sleep(delay)
+    }
+    lastRes = await fetch(url, opts)
+    if (lastRes.ok || !RETRYABLE_STATUSES.has(lastRes.status)) return lastRes
+  }
+  return lastRes
+}
 
 // Turns a Gemini error response into a friendly, actionable message.
 function friendlyError(status, body) {
@@ -19,7 +39,9 @@ function friendlyError(status, body) {
   if (status === 404)
     return `Model not found (404). ${apiMsg} Try selecting a different model in options.`
   if (status >= 500)
-    return 'Gemini had a server error. Please try again in a few seconds.'
+    return 'Gemini had a server error. Please try again in a moment.'
+  if (status === 429)
+    return 'Rate limit reached (429). Wait a moment and try again, or switch to a lighter model in options.'
   return apiMsg || `Request failed with status ${status}.`
 }
 
