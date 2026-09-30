@@ -43,13 +43,6 @@ function friendlyError(status, body) {
   return apiMsg || `Request failed with status ${status}.`
 }
 
-function rankModel(model) {
-  const id = model.toLowerCase()
-  const stabilityRank = /preview|experimental/.test(id) ? 1 : 0
-  const speedRank = id.includes('flash-lite') ? 0 : id.includes('flash') ? 1 : id.includes('pro') ? 2 : 3
-  return [stabilityRank, speedRank]
-}
-
 async function probeModel({ apiKey, model }) {
   const url = `${API_BASE}/models/${encodeURIComponent(model)}:generateContent`
   const res = await fetch(url, {
@@ -86,49 +79,17 @@ async function probeModel({ apiKey, model }) {
   }
 }
 
-// Tests the same structured-output capability used by prompt optimization.
+// Validates the key when no model is provided; tests optimizer compatibility when one is.
 export async function testApiKey({ apiKey, model }) {
   if (!apiKey) throw new Error('Enter an API key first.')
-  if (!model) throw new Error('Choose a model first.')
-  await probeModel({ apiKey, model })
-  return true
-}
-
-// Finds a fast available model and verifies it can return the optimizer schema.
-export async function connectGemini({ apiKey }) {
-  if (!apiKey?.trim()) throw new Error('Paste your Gemini API key to continue.')
-
-  const models = await listModels({ apiKey: apiKey.trim() })
-  if (!models.length) {
-    throw new Error('This key has no Gemini models available for text generation.')
+  if (model) {
+    await probeModel({ apiKey, model })
+    return { model }
   }
 
-  const candidates = [...models]
-    .sort((a, b) => {
-      const [aStability, aSpeed] = rankModel(a)
-      const [bStability, bSpeed] = rankModel(b)
-      return aStability - bStability || aSpeed - bSpeed || b.localeCompare(a, undefined, { numeric: true })
-    })
-    .slice(0, 3)
-
-  let lastCompatibilityError
-  for (const model of candidates) {
-    try {
-      await probeModel({ apiKey: apiKey.trim(), model })
-      return { model, models }
-    } catch (error) {
-      if (error.status === 400 || error.status === 404 || error.compatibilityFailure) {
-        lastCompatibilityError = error
-        continue
-      }
-      throw error
-    }
-  }
-
-  const detail = lastCompatibilityError?.message
-  throw new Error(
-    `Your key works, but none of the available models passed the optimizer compatibility check.${detail ? ` ${detail}` : ''}`
-  )
+  const models = await listModels({ apiKey })
+  if (!models.length) throw new Error('Your key works, but no Gemini models are available for text generation.')
+  return { valid: true }
 }
 
 // Calls Gemini generateContent and returns the parsed optimizer result.

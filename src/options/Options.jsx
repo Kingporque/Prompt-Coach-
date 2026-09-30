@@ -15,8 +15,9 @@ export default function Options() {
   const [model, setModel] = useState(DEFAULTS.model)
   const [models, setModels] = useState(FALLBACK_MODELS)
   const [showKey, setShowKey] = useState(false)
-  const [connected, setConnected] = useState(false)
-  const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [keyTested, setKeyTested] = useState(false)
+  const [modelsChecked, setModelsChecked] = useState(false)
+  const [modelTested, setModelTested] = useState(false)
   const [status, setStatus] = useState(null) // { type: 'ok'|'err'|'info', text }
   const [busy, setBusy] = useState(false)
 
@@ -29,7 +30,6 @@ export default function Options() {
     getSettings().then((s) => {
       setApiKey(s.apiKey)
       setModel(s.model)
-      setConnected(Boolean(s.apiKey && s.model))
       if (s.model) setModels((m) => [...new Set([s.model, ...m])])
     })
 
@@ -57,22 +57,42 @@ export default function Options() {
     setTimeout(() => setStatus(null), 2000)
   }
 
-  async function onConnect() {
+  async function onTestKey() {
     if (!apiKey.trim()) {
       setStatus({ type: 'err', text: 'Paste your Gemini API key first.' })
       return
     }
     setBusy(true)
-    setStatus({ type: 'info', text: 'Checking your key and finding a compatible model…' })
+    setStatus({ type: 'info', text: 'Testing your Gemini API key…' })
     try {
-      const result = await sendToWorker({ type: MSG.CONNECT_GEMINI, apiKey: apiKey.trim() })
-      await setSettings({ apiKey: apiKey.trim(), model: result.model })
-      setModel(result.model)
-      setModels(result.models)
-      setConnected(true)
-      setStatus({ type: 'ok', text: `Connected. ${result.model} passed the optimizer compatibility check.` })
+      await sendToWorker({ type: MSG.TEST_KEY, apiKey: apiKey.trim() })
+      await setSettings({ apiKey: apiKey.trim() })
+      setKeyTested(true)
+      setModelsChecked(false)
+      setModelTested(false)
+      setStatus({ type: 'ok', text: 'API key works. Next, check the models available to this key.' })
     } catch (err) {
-      setConnected(false)
+      setKeyTested(false)
+      setStatus({ type: 'err', text: err.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onCheckModels() {
+    setBusy(true)
+    setStatus({ type: 'info', text: 'Checking models available to this key…' })
+    try {
+      const data = await sendToWorker({ type: MSG.LIST_MODELS, apiKey: apiKey.trim() })
+      const list = data.models?.length ? data.models : []
+      if (list.length === 0) throw new Error('No Gemini models for text generation are available to this key.')
+      setModels(list)
+      if (!list.includes(model)) setModel(list[0])
+      setModelsChecked(true)
+      setModelTested(false)
+      setStatus({ type: 'ok', text: `Found ${list.length} available models. Choose one and test it.` })
+    } catch (err) {
+      setModelsChecked(false)
       setStatus({ type: 'err', text: err.message })
     } finally {
       setBusy(false)
@@ -80,33 +100,16 @@ export default function Options() {
   }
 
   async function onTestModel() {
+    if (!modelsChecked) return
     setBusy(true)
     setStatus({ type: 'info', text: `Checking ${model} with the optimizer response format…` })
     try {
       await sendToWorker({ type: MSG.TEST_KEY, apiKey: apiKey.trim(), model })
       await setSettings({ apiKey: apiKey.trim(), model })
-      setConnected(true)
+      setModelTested(true)
       setStatus({ type: 'ok', text: `${model} works with the optimizer. Settings saved.` })
     } catch (err) {
-      setStatus({ type: 'err', text: err.message })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function onRefreshModels() {
-    setBusy(true)
-    setStatus({ type: 'info', text: 'Fetching available models…' })
-    try {
-      const data = await sendToWorker({ type: MSG.LIST_MODELS, apiKey: apiKey.trim() })
-      const list = data.models?.length ? data.models : FALLBACK_MODELS
-      setModels(list)
-      if (!list.includes(model)) {
-        setModel(list[0])
-        setConnected(false)
-      }
-      setStatus({ type: 'ok', text: `Found ${list.length} available models. Select one and run its compatibility test.` })
-    } catch (err) {
+      setModelTested(false)
       setStatus({ type: 'err', text: err.message })
     } finally {
       setBusy(false)
@@ -118,7 +121,7 @@ export default function Options() {
       <h1>Prompt Optimizer — Settings</h1>
 
       <section className="card">
-        <h2>Connect Gemini</h2>
+        <h2>1. Test your API key</h2>
         <p className="help">
           Create a key in{' '}
           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">
@@ -136,7 +139,10 @@ export default function Options() {
             value={apiKey}
             onChange={(e) => {
               setApiKey(e.target.value)
-              setConnected(false)
+              setKeyTested(false)
+              setModelsChecked(false)
+              setModelTested(false)
+              setStatus(null)
             }}
             autoComplete="off"
             spellCheck={false}
@@ -147,31 +153,34 @@ export default function Options() {
         </div>
 
         <div className="actions">
-          <button className="primary connect-button" onClick={onConnect} disabled={busy}>
-            {busy ? 'Connecting…' : connected ? 'Reconnect and check model' : 'Connect and choose model'}
+          <button className="primary connect-button" onClick={onTestKey} disabled={busy}>
+            {busy ? 'Testing…' : 'Test API key'}
           </button>
         </div>
 
-        {connected && (
+        {keyTested && (
           <div className="connection-state">
             <span className="connection-indicator" />
-            Connected model: <strong>{model}</strong>
+            API key verified
           </div>
         )}
         {status && <div className={`status ${status.type}`} role="status" aria-live="polite">{status.text}</div>}
 
-        <button
-          className="advanced-toggle"
-          type="button"
-          aria-expanded={advancedOpen}
-          onClick={() => setAdvancedOpen((open) => !open)}
-        >
-          {advancedOpen ? 'Hide advanced model settings' : 'Advanced model settings'}
-        </button>
-
-        {advancedOpen && (
+        {keyTested && (
           <div className="advanced-settings">
-            <label className="label" htmlFor="model">Choose a different model</label>
+            <h2>2. Check available models</h2>
+            <p className="help">Fetch the Gemini models this key can use, then test your selection.</p>
+            <div className="actions">
+              <button className="secondary" onClick={onCheckModels} disabled={busy} type="button">
+                {busy ? 'Checking…' : modelsChecked ? 'Refresh available models' : 'Check available models'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {modelsChecked && (
+          <div className="advanced-settings">
+            <label className="label" htmlFor="model">3. Choose a model</label>
             <div className="key-row">
               <select
                 id="model"
@@ -179,20 +188,17 @@ export default function Options() {
                 value={model}
                 onChange={(e) => {
                   setModel(e.target.value)
-                  setConnected(false)
+                  setModelTested(false)
                 }}
               >
-                {[...new Set([...models, model])].map((availableModel) => (
+                {models.map((availableModel) => (
                   <option key={availableModel} value={availableModel}>{availableModel}</option>
                 ))}
               </select>
-              <button className="ghost" onClick={onRefreshModels} disabled={busy} type="button">
-                Refresh
-              </button>
             </div>
             <div className="actions">
               <button className="secondary" onClick={onTestModel} disabled={busy} type="button">
-                {busy ? 'Checking…' : 'Test and save model'}
+                {busy ? 'Testing…' : modelTested ? 'Test again and save' : 'Test and save model'}
               </button>
             </div>
           </div>

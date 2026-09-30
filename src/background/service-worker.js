@@ -1,6 +1,6 @@
 import { MSG } from '../lib/constants.js'
 import { getSettings, getConversation, setConversation } from '../lib/storage.js'
-import { optimizePrompt, connectGemini, testApiKey, listModels } from '../lib/gemini.js'
+import { optimizePrompt, testApiKey, listModels } from '../lib/gemini.js'
 
 // The service worker is the only place that touches the network / API key.
 // UI surfaces (popup, options, and later a content script) message it and get
@@ -10,9 +10,6 @@ async function handle(message, _sender) {
   const settings = await getSettings()
 
   switch (message?.type) {
-    case MSG.CONNECT_GEMINI: {
-      return connectGemini({ apiKey: message.apiKey })
-    }
     case MSG.OPTIMIZE: {
       const data = await optimizePrompt({
         apiKey: settings.apiKey,
@@ -56,11 +53,10 @@ async function handle(message, _sender) {
       return { ok: true }
     }
     case MSG.TEST_KEY: {
-      await testApiKey({
+      return testApiKey({
         apiKey: message.apiKey ?? settings.apiKey,
-        model: message.model || settings.model,
+        model: message.model,
       })
-      return { ok: true }
     }
     case MSG.LIST_MODELS: {
       const models = await listModels({ apiKey: message.apiKey ?? settings.apiKey })
