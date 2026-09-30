@@ -237,7 +237,14 @@ function showBanner(onOptimize) {
     <button class="po-intervention-dismiss">Dismiss</button>
   `
   const editor = findEditor()
-  if (editor && editor.parentElement) {
+  if (site.bannerPlacement === 'before-composer' && editor) {
+    const composer = editor.closest('form') || editor.parentElement
+    if (composer?.parentElement) {
+      composer.insertAdjacentElement('beforebegin', banner)
+    } else {
+      document.body.appendChild(banner)
+    }
+  } else if (editor && editor.parentElement) {
     editor.parentElement.appendChild(banner)
   } else {
     document.body.appendChild(banner)

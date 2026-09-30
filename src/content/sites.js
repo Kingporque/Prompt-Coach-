@@ -29,6 +29,7 @@ export const SITES = {
   },
   'claude.ai': {
     name: 'Claude',
+    bannerPlacement: 'before-composer',
     editorSelector: [
       'div.ProseMirror[contenteditable="true"]',
       'div[contenteditable="true"][role="textbox"]',
