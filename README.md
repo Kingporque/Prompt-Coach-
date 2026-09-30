@@ -38,17 +38,19 @@ On-page chat box ──▶ Inline button ─┘        │
 
 To use the optional setup script instead, download the installer for your OS:
 
-- [Download for Windows (PowerShell)](https://github.com/Kingporque/Prompt-Coach-/releases/latest/download/prompt-coach-install-windows.ps1)
-- [Download for Linux/macOS (shell)](https://github.com/Kingporque/Prompt-Coach-/releases/latest/download/prompt-coach-install-linux-macos.sh)
+- [Download for Windows (PowerShell)](https://github.com/Kingporque/Prompt-Coach-/raw/refs/heads/main/scripts/install.ps1?download=1)
+- [Download for Linux/macOS (shell)](https://github.com/Kingporque/Prompt-Coach-/raw/refs/heads/main/scripts/install.sh?download=1)
 
-The installers are separate release downloads, not files inside the extension
-ZIP. Run the downloaded script from your Downloads folder. It offers a choice to
-download the latest extension ZIP or use an existing ZIP/folder. For example,
-run `sh ~/Downloads/prompt-coach-install-linux-macos.sh` on Linux/macOS, or
-`powershell -ExecutionPolicy Bypass -File "$HOME\Downloads\prompt-coach-install-windows.ps1"`
-on Windows. Chrome still requires the manual **Load unpacked** step for
-extensions installed outside the Web Store. The API key is not handled by the
-installer scripts.
+The installers are separate downloads from the repository, not files inside the
+extension ZIP. These links work after the scripts are pushed to `main`. Run the
+downloaded script from your Downloads folder. It offers a choice to download the
+latest extension ZIP or use an existing ZIP/folder. The download-latest choice
+requires a published GitHub release with `prompt-optimizer.zip` attached. For
+example, run `sh ~/Downloads/install.sh` on Linux/macOS, or
+`powershell -ExecutionPolicy Bypass -File "$HOME\Downloads\install.ps1"` on
+Windows. Chrome still requires the manual **Load unpacked** step for extensions
+installed outside the Web Store. The API key is not handled by the installer
+scripts.
 
 ### Build from source
 
