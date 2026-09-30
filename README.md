@@ -30,7 +30,19 @@ On-page chat box ──▶ Inline button ─┘        │
 
 ## Setup
 
-### Quick start (from a fresh clone)
+### Install from a GitHub release
+
+Download the setup script for your computer from [`scripts/`](scripts/), then run it:
+
+- **Windows:** run `install.ps1` in PowerShell.
+- **macOS/Linux:** run `sh install.sh` in Terminal.
+
+The script downloads and extracts the latest prebuilt release, then opens
+Chrome's extension page. Chrome requires one manual step for extensions installed
+outside the Web Store: enable **Developer mode**, choose **Load unpacked**, and
+select the folder printed by the script. The API key is not handled by the script.
+
+### Build from source
 
 ```bash
 git clone <repo>
@@ -44,19 +56,27 @@ npm run build   # builds to /dist
 > `npm install-scripts approve esbuild` then `npm install` again (already handled
 > in this repo via `allowScripts` in `package.json`).
 
-### Load it into Chrome
+To load a source build into Chrome:
 
 1. Open `chrome://extensions`
 2. Turn on **Developer mode** (top-right)
 3. Click **Load unpacked**
 4. Select the **`dist/`** folder
 
-### Add your Gemini API key
+### Connect Gemini
 
-1. Get a free key at <https://aistudio.google.com/app/apikey>
-2. Right-click the extension icon → **Options** (or click the ⚙︎ in the popup)
-3. Paste your key, click **Test key**, then **Save**
-4. Optionally click **Refresh** to pull the live list of models your key can use
+1. Open the extension's **Options** page.
+2. Choose **Create a key** to open <https://aistudio.google.com/app/apikey>.
+3. Create a Gemini API key, return to Options, and paste it.
+4. Choose **Connect and choose model**. The extension checks the key, finds
+      available Gemini models, and tests up to three candidates using the same
+      structured response format as optimization. It saves the first compatible
+      model it finds.
+5. If you prefer another model, open **Advanced model settings**, select it, and
+      choose **Test and save model**.
+
+Google may apply usage limits or charges to API usage. The compatibility check
+uses a small generation request and may count toward the account's quota.
 
 You're ready — click the extension icon, paste a rough prompt, and hit **Optimize**.
 
@@ -95,15 +115,15 @@ This script:
 1. Builds the extension
 2. Bumps the version in `package.json`
 3. Commits + tags + pushes to Git
-4. Creates a `prompt-optimizer-v*.zip` of the `dist/` folder
-5. Prints a link to the GitHub "New Release" page for uploading the ZIP
+4. Creates versioned and stable-name ZIP archives of the `dist/` folder
+5. Prints a link to the GitHub "New Release" page and asks you to upload both ZIPs
 
 ## Distribution
 
 | Method | Reach | Notes |
 |--------|-------|-------|
 | **Chrome Web Store** | Millions | Best for broad distribution. Requires a one-time $5 developer registration. |
-| **GitHub Releases** | Dev users | Upload the ZIP from `npm run release`. Users download → extract → "Load unpacked" in `chrome://extensions`. |
+| **GitHub Releases** | Early users | Upload both ZIPs from `npm run release`. The setup script downloads/extracts the latest release; users still complete Chrome's one-time **Load unpacked** step. |
 | **Direct download link** | Anyone with the link | Host the ZIP on your site or a CDN. Same load-unpacked flow. |
 
 For live-reloading inside Chrome, `npm run dev` works with `@crxjs/vite-plugin`;
@@ -167,7 +187,7 @@ loading the final unpacked extension.
 - [x] **Keyboard shortcut** — `Ctrl+Shift+Y` (`⌘+Shift+Y` on Mac) opens the popup;
       remap at `chrome://extensions/shortcuts`
 - [ ] Prompt history / recent optimizations
-- [ ] Guided first-run onboarding for the API key
+- [x] Guided Gemini connection: validate key, discover models, and auto-select a compatible model
 - [x] **Proactive intervention** (Phase 3) — pattern detection + auto-suggest banner
       (idle after response, message edits, repetition, model errors/refusals)
 - [x] **Performance optimization** — single rAF-driven poll + combined DOM pass keeps

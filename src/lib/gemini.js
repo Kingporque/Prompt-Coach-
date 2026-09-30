@@ -40,9 +40,95 @@ function friendlyError(status, body) {
     return `Model not found (404). ${apiMsg} Try selecting a different model in options.`
   if (status >= 500)
     return 'Gemini had a server error. Please try again in a moment.'
-  if (status === 429)
-    return 'Rate limit reached (429). Wait a moment and try again, or switch to a lighter model in options.'
   return apiMsg || `Request failed with status ${status}.`
+}
+
+function rankModel(model) {
+  const id = model.toLowerCase()
+  const stabilityRank = /preview|experimental/.test(id) ? 1 : 0
+  const speedRank = id.includes('flash-lite') ? 0 : id.includes('flash') ? 1 : id.includes('pro') ? 2 : 3
+  return [stabilityRank, speedRank]
+}
+
+async function probeModel({ apiKey, model }) {
+  const url = `${API_BASE}/models/${encodeURIComponent(model)}:generateContent`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: 'Return the required JSON with optimized_prompt set to "ok" and empty arrays for changes and techniques.' }] }],
+      generationConfig: {
+        temperature: 0.4,
+        responseMimeType: 'application/json',
+        responseSchema: RESPONSE_SCHEMA,
+        maxOutputTokens: 128,
+      },
+    }),
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const error = new Error(friendlyError(res.status, data))
+    error.status = res.status
+    throw error
+  }
+
+  const text = data?.candidates?.[0]?.content?.parts?.map((part) => part.text).join('') || ''
+  try {
+    const parsed = JSON.parse(text)
+    if (
+      typeof parsed.optimized_prompt !== 'string' ||
+      !Array.isArray(parsed.changes) ||
+      !Array.isArray(parsed.techniques)
+    ) throw new Error('The model did not return the required structured response.')
+  } catch (error) {
+    error.compatibilityFailure = true
+    throw error
+  }
+}
+
+// Tests the same structured-output capability used by prompt optimization.
+export async function testApiKey({ apiKey, model }) {
+  if (!apiKey) throw new Error('Enter an API key first.')
+  if (!model) throw new Error('Choose a model first.')
+  await probeModel({ apiKey, model })
+  return true
+}
+
+// Finds a fast available model and verifies it can return the optimizer schema.
+export async function connectGemini({ apiKey }) {
+  if (!apiKey?.trim()) throw new Error('Paste your Gemini API key to continue.')
+
+  const models = await listModels({ apiKey: apiKey.trim() })
+  if (!models.length) {
+    throw new Error('This key has no Gemini models available for text generation.')
+  }
+
+  const candidates = [...models]
+    .sort((a, b) => {
+      const [aStability, aSpeed] = rankModel(a)
+      const [bStability, bSpeed] = rankModel(b)
+      return aStability - bStability || aSpeed - bSpeed || b.localeCompare(a, undefined, { numeric: true })
+    })
+    .slice(0, 3)
+
+  let lastCompatibilityError
+  for (const model of candidates) {
+    try {
+      await probeModel({ apiKey: apiKey.trim(), model })
+      return { model, models }
+    } catch (error) {
+      if (error.status === 400 || error.status === 404 || error.compatibilityFailure) {
+        lastCompatibilityError = error
+        continue
+      }
+      throw error
+    }
+  }
+
+  const detail = lastCompatibilityError?.message
+  throw new Error(
+    `Your key works, but none of the available models passed the optimizer compatibility check.${detail ? ` ${detail}` : ''}`
+  )
 }
 
 // Calls Gemini generateContent and returns the parsed optimizer result.
@@ -113,23 +199,6 @@ export async function optimizePrompt({ apiKey, model, style, rawPrompt, context 
     changes: Array.isArray(parsed.changes) ? parsed.changes : [],
     techniques: Array.isArray(parsed.techniques) ? parsed.techniques : [],
   }
-}
-
-// Lightweight key/connectivity check used by the options page.
-export async function testApiKey({ apiKey, model }) {
-  if (!apiKey) throw new Error('Enter an API key first.')
-  const url = `${API_BASE}/models/${encodeURIComponent(model)}:generateContent`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
-      contents: [{ role: 'user', parts: [{ text: 'Reply with the single word: ok' }] }],
-      generationConfig: { maxOutputTokens: 5 },
-    }),
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(friendlyError(res.status, data))
-  return true
 }
 
 // Fetches the list of models available to this key (for the options dropdown).

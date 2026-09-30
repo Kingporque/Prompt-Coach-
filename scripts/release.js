@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execSync } from 'child_process'
-import { writeFileSync, readFileSync } from 'fs'
+import { copyFileSync, writeFileSync, readFileSync } from 'fs'
 import { join } from 'path'
 
 const ROOT = process.cwd()
@@ -45,8 +45,11 @@ log(`Tagged and pushed v${newVersion}`)
 
 // 5. Create a simple zip for now (GitHub Release artifacts can be added manually
 //    or via GitHub Actions in the repo's .github/workflows)
-execSync(`cd dist && zip -r "../prompt-optimizer-v${newVersion}.zip" .`, { stdio: 'inherit' })
+const versionedZip = join(ROOT, `prompt-optimizer-v${newVersion}.zip`)
+execSync(`cd dist && zip -r "${versionedZip}" .`, { stdio: 'inherit' })
+copyFileSync(versionedZip, join(ROOT, 'prompt-optimizer.zip'))
 log(`Created prompt-optimizer-v${newVersion}.zip`)
+log('Created prompt-optimizer.zip for the installer scripts')
 
 // 6. Open release page
 const repoUrl = execSync('git remote get-url origin', { encoding: 'utf8' }).trim()
@@ -56,5 +59,5 @@ console.log(`\n✅ Release v${newVersion} ready!\n`)
 console.log(`1. Go to ${repoUrl}/releases/new`)
 console.log(`2. Tag: v${newVersion}`)
 console.log(`3. Title: v${newVersion}`)
-console.log(`4. Upload: prompt-optimizer-v${newVersion}.zip`)
+console.log(`4. Upload both: prompt-optimizer-v${newVersion}.zip and prompt-optimizer.zip`)
 console.log(`5. Publish release\n`)

@@ -35,6 +35,12 @@ h1 {
   margin: 0 0 20px;
 }
 
+h2 {
+  font-size: 16px;
+  font-weight: 650;
+  margin: 0 0 10px;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -63,6 +69,10 @@ h1 {
 .key-row {
   display: flex;
   gap: 8px;
+}
+
+.key-row .input {
+  min-width: 0;
 }
 
 .input {
@@ -103,6 +113,10 @@ select.input {
   display: flex;
   gap: 10px;
   margin-top: 20px;
+}
+
+.connect-button {
+  width: 100%;
 }
 
 .primary {
@@ -164,6 +178,49 @@ select.input {
   background: var(--surface-2);
   border: 1px solid var(--border);
   color: var(--text-dim);
+}
+
+.connection-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  color: #86efac;
+  font-size: 12.5px;
+}
+
+.connection-state strong {
+  overflow-wrap: anywhere;
+}
+
+.connection-indicator {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.advanced-toggle {
+  margin-top: 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.advanced-toggle:hover {
+  color: var(--text);
+}
+
+.advanced-settings {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
 }
 
 .footnote {

@@ -3,13 +3,10 @@ import { MSG, DEFAULTS, STORAGE_KEYS, INTERVENTION_DEFAULTS } from '../lib/const
 import { getSettings, setSettings } from '../lib/storage.js'
 import { sendToWorker } from '../lib/messaging.js'
 
-// Known-good fallback models shown before/if the live model list can't be fetched.
-// Use the option's own "Refresh" to pull the exact list your key is authorized for.
+// Kept for the advanced selector before the user refreshes their available models.
 const FALLBACK_MODELS = [
-  'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
   'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
   'gemini-2.5-pro',
 ]
 
@@ -18,6 +15,8 @@ export default function Options() {
   const [model, setModel] = useState(DEFAULTS.model)
   const [models, setModels] = useState(FALLBACK_MODELS)
   const [showKey, setShowKey] = useState(false)
+  const [connected, setConnected] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [status, setStatus] = useState(null) // { type: 'ok'|'err'|'info', text }
   const [busy, setBusy] = useState(false)
 
@@ -30,9 +29,8 @@ export default function Options() {
     getSettings().then((s) => {
       setApiKey(s.apiKey)
       setModel(s.model)
-      if (s.model && !FALLBACK_MODELS.includes(s.model)) {
-        setModels((m) => [...new Set([s.model, ...m])])
-      }
+      setConnected(Boolean(s.apiKey && s.model))
+      if (s.model) setModels((m) => [...new Set([s.model, ...m])])
     })
 
     chrome.storage.local.get(STORAGE_KEYS.interventionSettings).then((stored) => {
@@ -46,8 +44,7 @@ export default function Options() {
     })
   }, [])
 
-  async function onSave() {
-    await setSettings({ apiKey: apiKey.trim(), model })
+  async function onSavePreferences() {
     await chrome.storage.local.set({
       [STORAGE_KEYS.interventionSettings]: {
         enabled: interventionEnabled,
@@ -56,17 +53,40 @@ export default function Options() {
         repetitionThreshold: Number(repetitionThreshold),
       },
     })
-    setStatus({ type: 'ok', text: 'Saved.' })
+    setStatus({ type: 'ok', text: 'Preferences saved.' })
     setTimeout(() => setStatus(null), 2000)
   }
 
-  async function onTest() {
+  async function onConnect() {
+    if (!apiKey.trim()) {
+      setStatus({ type: 'err', text: 'Paste your Gemini API key first.' })
+      return
+    }
     setBusy(true)
-    setStatus({ type: 'info', text: 'Testing…' })
+    setStatus({ type: 'info', text: 'Checking your key and finding a compatible model…' })
     try {
-      await setSettings({ apiKey: apiKey.trim(), model })
+      const result = await sendToWorker({ type: MSG.CONNECT_GEMINI, apiKey: apiKey.trim() })
+      await setSettings({ apiKey: apiKey.trim(), model: result.model })
+      setModel(result.model)
+      setModels(result.models)
+      setConnected(true)
+      setStatus({ type: 'ok', text: `Connected. ${result.model} passed the optimizer compatibility check.` })
+    } catch (err) {
+      setConnected(false)
+      setStatus({ type: 'err', text: err.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onTestModel() {
+    setBusy(true)
+    setStatus({ type: 'info', text: `Checking ${model} with the optimizer response format…` })
+    try {
       await sendToWorker({ type: MSG.TEST_KEY, apiKey: apiKey.trim(), model })
-      setStatus({ type: 'ok', text: 'Success — your key works!' })
+      await setSettings({ apiKey: apiKey.trim(), model })
+      setConnected(true)
+      setStatus({ type: 'ok', text: `${model} works with the optimizer. Settings saved.` })
     } catch (err) {
       setStatus({ type: 'err', text: err.message })
     } finally {
@@ -81,8 +101,11 @@ export default function Options() {
       const data = await sendToWorker({ type: MSG.LIST_MODELS, apiKey: apiKey.trim() })
       const list = data.models?.length ? data.models : FALLBACK_MODELS
       setModels(list)
-      if (!list.includes(model)) setModel(list[0])
-      setStatus({ type: 'ok', text: `Found ${list.length} models.` })
+      if (!list.includes(model)) {
+        setModel(list[0])
+        setConnected(false)
+      }
+      setStatus({ type: 'ok', text: `Found ${list.length} available models. Select one and run its compatibility test.` })
     } catch (err) {
       setStatus({ type: 'err', text: err.message })
     } finally {
@@ -95,64 +118,85 @@ export default function Options() {
       <h1>Prompt Optimizer — Settings</h1>
 
       <section className="card">
-        <label className="label" htmlFor="key">
-          Gemini API key
-        </label>
+        <h2>Connect Gemini</h2>
         <p className="help">
-          Get a free key from{' '}
+          Create a key in{' '}
           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">
             Google AI Studio
           </a>
-          . It is stored only in this browser (chrome.storage.local) and is sent
-          directly to Google — never to any other server.
+          , paste it here, and we’ll check it and choose a compatible model for you.
         </p>
         <div className="key-row">
           <input
             id="key"
             className="input"
+            aria-label="Gemini API key"
             type={showKey ? 'text' : 'password'}
             placeholder="AIza…"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => {
+              setApiKey(e.target.value)
+              setConnected(false)
+            }}
             autoComplete="off"
             spellCheck={false}
           />
-          <button className="ghost" onClick={() => setShowKey((v) => !v)} type="button">
+          <button className="ghost" onClick={() => setShowKey((value) => !value)} type="button">
             {showKey ? 'Hide' : 'Show'}
           </button>
         </div>
 
-        <label className="label" htmlFor="model" style={{ marginTop: 16 }}>
-          Model
-        </label>
-        <div className="key-row">
-          <select
-            id="model"
-            className="input"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-          >
-            {models.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <button className="ghost" onClick={onRefreshModels} disabled={busy} type="button">
-            Refresh
-          </button>
-        </div>
-
         <div className="actions">
-          <button className="primary" onClick={onSave} disabled={busy}>
-            Save
-          </button>
-          <button className="secondary" onClick={onTest} disabled={busy}>
-            Test key
+          <button className="primary connect-button" onClick={onConnect} disabled={busy}>
+            {busy ? 'Connecting…' : connected ? 'Reconnect and check model' : 'Connect and choose model'}
           </button>
         </div>
 
-        {status && <div className={`status ${status.type}`}>{status.text}</div>}
+        {connected && (
+          <div className="connection-state">
+            <span className="connection-indicator" />
+            Connected model: <strong>{model}</strong>
+          </div>
+        )}
+        {status && <div className={`status ${status.type}`} role="status" aria-live="polite">{status.text}</div>}
+
+        <button
+          className="advanced-toggle"
+          type="button"
+          aria-expanded={advancedOpen}
+          onClick={() => setAdvancedOpen((open) => !open)}
+        >
+          {advancedOpen ? 'Hide advanced model settings' : 'Advanced model settings'}
+        </button>
+
+        {advancedOpen && (
+          <div className="advanced-settings">
+            <label className="label" htmlFor="model">Choose a different model</label>
+            <div className="key-row">
+              <select
+                id="model"
+                className="input"
+                value={model}
+                onChange={(e) => {
+                  setModel(e.target.value)
+                  setConnected(false)
+                }}
+              >
+                {[...new Set([...models, model])].map((availableModel) => (
+                  <option key={availableModel} value={availableModel}>{availableModel}</option>
+                ))}
+              </select>
+              <button className="ghost" onClick={onRefreshModels} disabled={busy} type="button">
+                Refresh
+              </button>
+            </div>
+            <div className="actions">
+              <button className="secondary" onClick={onTestModel} disabled={busy} type="button">
+                {busy ? 'Checking…' : 'Test and save model'}
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="card">
@@ -225,6 +269,12 @@ export default function Options() {
           onChange={(e) => setRepetitionThreshold(Number(e.target.value))}
           disabled={!interventionEnabled}
         />
+
+        <div className="actions">
+          <button className="secondary" onClick={onSavePreferences} type="button">
+            Save preferences
+          </button>
+        </div>
       </section>
 
       <p className="footnote">
