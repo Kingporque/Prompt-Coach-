@@ -116,9 +116,9 @@ consuming negligible CPU when the page is idle.
 To create a new release (version bump + tagged commit + ZIP archive):
 
 ```bash
-npm run release       # patch bump (0.1.0 → 0.1.1)
-npm run release minor # minor bump (0.1.0 → 0.2.0)
-npm run release major # major bump (0.1.0 → 1.0.0)
+npm run release       # patch bump (0.1.1 → 0.1.2)
+npm run release minor # minor bump (0.1.1 → 0.2.0)
+npm run release major # major bump (0.1.1 → 1.0.0)
 ```
 
 This script:
@@ -133,7 +133,7 @@ This script:
 | Method | Reach | Notes |
 |--------|-------|-------|
 | **Chrome Web Store** | Millions | Best for broad distribution. Requires a one-time $5 developer registration. |
-| **GitHub Releases** | Early users | Upload both ZIPs from `npm run release`. The setup script downloads/extracts the latest release; users still complete Chrome's one-time **Load unpacked** step. |
+| **GitHub Releases** | Early users | Upload both ZIPs and both OS-specific installer scripts from `npm run release`. Users still complete Chrome's one-time **Load unpacked** step. |
 | **Direct download link** | Anyone with the link | Host the ZIP on your site or a CDN. Same load-unpacked flow. |
 
 For live-reloading inside Chrome, `npm run dev` works with `@crxjs/vite-plugin`;

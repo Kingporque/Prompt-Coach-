@@ -1,7 +1,7 @@
 {
   "name": "prompt-optimizer-extension",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Chrome extension that rewrites rough prompts using prompt-engineering best practices via the Gemini API.",
   "type": "module",
   "scripts": {
