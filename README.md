@@ -30,17 +30,25 @@ On-page chat box ──▶ Inline button ─┘        │
 
 ## Setup
 
-### Install from a GitHub release
+### Install a prebuilt ZIP
 
-Download the setup script for your computer from [`scripts/`](scripts/), then run it:
+1. Download and extract `prompt-optimizer-v*.zip` from the GitHub release.
+2. Open `chrome://extensions` in Chrome and turn on **Developer mode**.
+3. Choose **Load unpacked** and select the extracted folder containing `manifest.json` at its top level.
 
-- **Windows:** run `install.ps1` in PowerShell.
-- **macOS/Linux:** run `sh install.sh` in Terminal.
+To use the optional setup script instead, download the installer for your OS:
 
-The script downloads and extracts the latest prebuilt release, then opens
-Chrome's extension page. Chrome requires one manual step for extensions installed
-outside the Web Store: enable **Developer mode**, choose **Load unpacked**, and
-select the folder printed by the script. The API key is not handled by the script.
+- [Download for Windows (PowerShell)](https://github.com/Kingporque/Prompt-Coach-/releases/latest/download/prompt-coach-install-windows.ps1)
+- [Download for Linux/macOS (shell)](https://github.com/Kingporque/Prompt-Coach-/releases/latest/download/prompt-coach-install-linux-macos.sh)
+
+The installers are separate release downloads, not files inside the extension
+ZIP. Run the downloaded script from your Downloads folder. It offers a choice to
+download the latest extension ZIP or use an existing ZIP/folder. For example,
+run `sh ~/Downloads/prompt-coach-install-linux-macos.sh` on Linux/macOS, or
+`powershell -ExecutionPolicy Bypass -File "$HOME\Downloads\prompt-coach-install-windows.ps1"`
+on Windows. Chrome still requires the manual **Load unpacked** step for
+extensions installed outside the Web Store. The API key is not handled by the
+installer scripts.
 
 ### Build from source
 
@@ -115,8 +123,8 @@ This script:
 1. Builds the extension
 2. Bumps the version in `package.json`
 3. Commits + tags + pushes to Git
-4. Creates versioned and stable-name ZIP archives of the `dist/` folder
-5. Prints a link to the GitHub "New Release" page and asks you to upload both ZIPs
+4. Creates versioned and stable-name ZIP archives of the `dist/` folder and prepares two separate OS-specific installers
+5. Prints a link to the GitHub "New Release" page and asks you to upload all four assets
 
 ## Distribution
 

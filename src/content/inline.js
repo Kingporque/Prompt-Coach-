@@ -11,6 +11,7 @@ import { sendToWorker } from '../lib/messaging.js'
 import { resolveSite } from './sites.js'
 
 const site = resolveSite()
+const MAX_CONTEXT_MESSAGES = 6
 
 function findEditor() {
   if (!site?.editorSelector) return null
@@ -86,29 +87,14 @@ function setBusy(button, busy) {
 function getConversationTurns() {
   if (!site.userMessageSelector || !site.assistantMessageSelector || !site.messageContentSelector) return []
 
-  const userMsgs = document.querySelectorAll(site.userMessageSelector)
-  const assistantMsgs = document.querySelectorAll(site.assistantMessageSelector)
+  const selectors = `${site.userMessageSelector}, ${site.assistantMessageSelector}`
+  const recentMessages = Array.from(document.querySelectorAll(selectors)).slice(-MAX_CONTEXT_MESSAGES)
 
-  // Merge by document position so user and assistant turns interleave correctly.
-  const merged = []
-  userMsgs.forEach((el) => {
+  return recentMessages.map((el) => {
+    const type = el.matches(site.userMessageSelector) ? 'user' : 'assistant'
     const content = el.querySelector(site.messageContentSelector)?.textContent || el.textContent
-    merged.push({ type: 'user', text: content.trim(), node: el })
+    return { type, text: content.trim().substring(0, 500) }
   })
-  assistantMsgs.forEach((el) => {
-    const content = el.querySelector(site.messageContentSelector)?.textContent || el.textContent
-    merged.push({ type: 'assistant', text: content.trim(), node: el })
-  })
-
-  merged.sort((a, b) => {
-    const pos = a.node.compareDocumentPosition(b.node)
-    if (pos & 4) return -1 // a before b
-    if (pos & 2) return 1  // a after b
-    return 0
-  })
-
-  // Clean up node references — we only need type + text.
-  return merged.map((m) => ({ type: m.type, text: m.text.substring(0, 500) }))
 }
 
 // Serialize turns to the format expected by the Gemini meta-prompt.
